@@ -1,299 +1,333 @@
 function main(workbook: ExcelScript.Workbook) {
-  // Visualization Configuration
-  const visualizationConfig: VisualizationConfig = {
-    outputSheetName: "Project Display",
-    factTable: {
-      sheetName: "PROJECT_ITEMS",
-      keyColumns: ["Line Item ID", "Quantity", "Project ID"],
-    },
-    dimensionTables: [
-      {
-        sheetName: "PROJECTS",
-        joinColumnFact: "Project ID",
-        joinColumnDim: "Project ID",
-        selectColumns: ["Project ID", "Project Name"],
-      },
-      {
-        sheetName: "LINE_ITEMS",
-        joinColumnFact: "Line Item ID",
-        joinColumnDim: "Line Item ID",
-        selectColumns: [
-          "Line Item ID",
-          "Line Item",
-          "Description",
-          "Price Act",
+    // Visualization Configuration
+    const visualizationConfig: VisualizationConfig = {
+        outputSheetName: "Project Display",
+        factTable: {
+            sheetName: "PROJECT_ITEMS",
+            keyColumns: ["Line Item ID", "Quantity", "Project ID"],
+        },
+        dimensionTables: [
+            {
+                sheetName: "PROJECTS",
+                joinColumnFact: "Project ID",
+                joinColumnDim: "Project ID",
+                selectColumns: ["Project ID", "Project Name"],
+            },
+            {
+                sheetName: "LINE_ITEMS",
+                joinColumnFact: "Line Item ID",
+                joinColumnDim: "Line Item ID",
+                selectColumns: [
+                    "Line Item ID",
+                    "Line Item",
+                    "Description",
+                    "Price Act",
+                ],
+            },
         ],
-      },
-    ],
-    outputColumns: [
-      {
-        header: "Project Name",
-        source: 'dimension',
-        sheetName: "PROJECTS",
-        columnName: "Project Name",
-        type: "STRING",
-      },
-      {
-        header: "Item ID",
-        source: 'dimension',
-        sheetName: "LINE_ITEMS",
-        columnName: "Line Item ID",
-        type: "STRING",
-      },
-      {
-        header: "Line Item",
-        source: 'dimension',
-        sheetName: "LINE_ITEMS",
-        columnName: "Line Item",
-        type: "STRING",
-      },
-      {
-        header: "Description",
-        source: 'dimension',
-        sheetName: "LINE_ITEMS",
-        columnName: "Description",
-        type: "STRING",
-      },
-      {
-        header: "Quantity",
-        source: 'fact',
-        columnName: "Quantity",
-        type: "NUMBER",
-      },
-      {
-        header: "Price",
-        source: 'dimension',
-        sheetName: "LINE_ITEMS",
-        columnName: "Price Act",
-        type: "CURRENCY",
-      },
-      {
-        header: "Total",
-        source: 'calculated',
-        formula: (row) => Number(row["Quantity"]) * Number(row["Price Act"]),
-        type: "CURRENCY",
-      },
-    ],
-    slicers: [
-      { columnName: "Project Name" },
-      { columnName: "Line Item" },
-      // Add more slicers as needed
-    ],
-  };
+        outputColumns: [
+            {
+                header: "Project Name",
+                source: 'dimension',
+                sheetName: "PROJECTS",
+                columnName: "Project Name",
+                type: "STRING",
+            },
+            {
+                header: "Item ID",
+                source: 'dimension',
+                sheetName: "LINE_ITEMS",
+                columnName: "Line Item ID",
+                type: "STRING",
+            },
+            {
+                header: "Line Item",
+                source: 'dimension',
+                sheetName: "LINE_ITEMS",
+                columnName: "Line Item",
+                type: "STRING",
+            },
+            {
+                header: "Description",
+                source: 'dimension',
+                sheetName: "LINE_ITEMS",
+                columnName: "Description",
+                type: "STRING",
+            },
+            {
+                header: "Quantity",
+                source: 'fact',
+                columnName: "Quantity",
+                type: "NUMBER",
+            },
+            {
+                header: "Price",
+                source: 'dimension',
+                sheetName: "LINE_ITEMS",
+                columnName: "Price Act",
+                type: "CURRENCY",
+            },
+            {
+                header: "Total",
+                source: 'calculated',
+                formula: (row) => Number(row["Quantity"]) * Number(row["Price Act"]),
+                type: "CURRENCY",
+            },
+        ],
+        slicers: [
+            { columnName: "Project Name" },
+            { columnName: "Line Item" },
+            // Add more slicers as needed
+        ],
+    };
 
-  // Prepare the output sheet
-  const outputSheet = getOrCreateSheet(workbook, visualizationConfig.outputSheetName);
+    // Prepare the output sheet
+    const outputSheet = getOrCreateSheet(workbook, visualizationConfig.outputSheetName);
 
-  // Set the headers
-  const headers = visualizationConfig.outputColumns.map(col => col.header);
-  outputSheet.getRange("A1").getOffsetRange(0, 0, 1, headers.length).setValues([headers]);
+    // Set the headers
+    const headers = visualizationConfig.outputColumns.map(col => col.header);
+    outputSheet.getRange("A1").getResizedRange(0, headers.length - 1).setValues([headers]);
 
-  // Build the visualization data
-  const outputData = buildVisualizationData(workbook, visualizationConfig);
+    // Build the visualization data
+    const outputData = buildVisualizationData(workbook, visualizationConfig);
 
-  // Write data to the output sheet with formatting
-  if (outputData.length > 0) {
-    const dataRange = outputSheet.getRange("A2").getResizedRange(outputData.length - 1, headers.length - 1);
-    dataRange.setValues(outputData);
-    formatOutputColumns(dataRange, visualizationConfig.outputColumns);
+    // Write data to the output sheet with formatting
+    if (outputData.length > 0) {
+        const dataRange = outputSheet.getRange("A2").getResizedRange(outputData.length - 1, headers.length - 1);
+        dataRange.setValues(outputData);
+        formatOutputColumns(dataRange, visualizationConfig.outputColumns);
 
-    // Convert the data range to a Table object
-    const table = outputSheet.addTable(dataRange.getExtendedRange(-1, 0), true);
+        // Calculate the total number of rows and columns
+        const totalRows = outputData.length + 1; // +1 to include the header row
+        const totalColumns = headers.length;
 
-    // Add slicers if configured
-    if (visualizationConfig.slicers?.length) {
-      addAndPositionSlicers(workbook, table, visualizationConfig.slicers);
+        // Get the range that includes headers and data
+        const tableRange = outputSheet.getRange("A1").getResizedRange(totalRows - 1, totalColumns - 1);
+
+        // Convert the data range to a Table object
+        const table = outputSheet.addTable(tableRange, true);
+
+        // Add slicers if configured
+        if (visualizationConfig.slicers?.length) {
+            addAndPositionSlicers(workbook, table, visualizationConfig.slicers);
+        }
     }
-  }
 
-  // Auto-fit columns
-  outputSheet.getUsedRange().getFormat().autofitColumns();
+    // Auto-fit columns
+    outputSheet.getUsedRange().getFormat().autofitColumns();
 }
 
 /**
  * Helper function to get or create a worksheet by name.
  */
 const getOrCreateSheet = (workbook: ExcelScript.Workbook, sheetName: string): ExcelScript.Worksheet => {
-  let sheet = workbook.getWorksheet(sheetName);
-  if (!sheet) {
-    sheet = workbook.addWorksheet(sheetName);
-  } else {
-    sheet.getUsedRange()?.clear();
-  }
-  return sheet;
+    let sheet = workbook.getWorksheet(sheetName);
+    if (!sheet) {
+        sheet = workbook.addWorksheet(sheetName);
+    } else {
+        sheet.getUsedRange()?.clear();
+    }
+    return sheet;
 };
 
 /**
  * Builds the visualization data by joining fact and dimension tables.
  */
 const buildVisualizationData = (
-  workbook: ExcelScript.Workbook,
-  config: VisualizationConfig
-): any[][] => {
-  // Load data from fact table
-  const factTableData = loadTableData(workbook, config.factTable.sheetName, config.factTable.keyColumns);
+    workbook: ExcelScript.Workbook,
+    config: VisualizationConfig
+): (string | number | boolean | null)[][] => {
+    // Load data from fact table
+    const factTableData = loadTableData(workbook, config.factTable.sheetName, config.factTable.keyColumns);
 
-  // Load and index data from dimension tables
-  const dimensionDataMaps = config.dimensionTables.reduce((acc, dimConfig) => {
-    const dimData = loadTableData(workbook, dimConfig.sheetName, dimConfig.selectColumns);
-    const joinColumnIndex = dimData.headers.indexOf(dimConfig.joinColumnDim);
-    const dimDataMap = new Map(dimData.rows.map(row => [row[joinColumnIndex], row]));
-    acc[dimConfig.sheetName] = { dataMap: dimDataMap, headers: dimData.headers };
-    return acc;
-  }, {} as Record<string, { dataMap: Map<string, any[]>, headers: string[] }>);
+    // Load and index data from dimension tables
+    const dimensionDataMaps: DimensionDataMaps = config.dimensionTables.reduce((acc, dimConfig) => {
+        const dimData = loadTableData(workbook, dimConfig.sheetName, dimConfig.selectColumns);
+        const joinColumnIndex = dimData.headers.indexOf(dimConfig.joinColumnDim);
+        const dimDataMap: { [key: string]: (string | number | boolean | null)[] } = {};
 
-  // Build output data
-  return factTableData.rows.map(factRow => {
-    // Create a row object to hold all data for easy access
-    const rowObj = { ...Object.fromEntries(factTableData.headers.map((h, i) => [h, factRow[i]])) };
+        dimData.rows.forEach(row => {
+            const key = String(row[joinColumnIndex]);
+            dimDataMap[key] = row;
+        });
 
-    // Merge dimension data into row object
-    config.dimensionTables.forEach(dimConfig => {
-      const dimInfo = dimensionDataMaps[dimConfig.sheetName];
-      const factJoinValue = rowObj[dimConfig.joinColumnFact];
-      const dimRow = dimInfo.dataMap.get(factJoinValue);
-      if (dimRow) {
-        Object.assign(rowObj, Object.fromEntries(dimInfo.headers.map((h, i) => [h, dimRow[i]])));
-      }
+        acc[dimConfig.sheetName] = { dataMap: dimDataMap, headers: dimData.headers };
+        return acc;
+    }, {} as DimensionDataMaps);
+
+    // Build output data
+    return factTableData.rows.map(factRow => {
+        // Create a row object to hold all data for easy access
+        const rowObj = createObjectFromArrays(factTableData.headers, factRow);
+
+        // Merge dimension data into row object
+        config.dimensionTables.forEach(dimConfig => {
+            const dimInfo = dimensionDataMaps[dimConfig.sheetName];
+            const factJoinValue = String(rowObj[dimConfig.joinColumnFact]);
+            const dimRow = dimInfo.dataMap[factJoinValue];
+            if (dimRow) {
+                const dimRowObj = createObjectFromArrays(dimInfo.headers, dimRow);
+                Object.assign(rowObj, dimRowObj);
+            }
+        });
+
+        // Build the output row
+        return config.outputColumns.map(colConfig => {
+            if (colConfig.source === 'fact' || colConfig.source === 'dimension') {
+                return rowObj[colConfig.columnName!];
+            } else if (colConfig.source === 'calculated' && colConfig.formula) {
+                try {
+                    return colConfig.formula(rowObj);
+                } catch (error) {
+                    console.log(`Error calculating column "${colConfig.header}":`, error);
+                    return null;
+                }
+            }
+            return null;
+        });
     });
+};
 
-    // Build the output row
-    return config.outputColumns.map(colConfig => {
-      if (colConfig.source === 'fact' || colConfig.source === 'dimension') {
-        return rowObj[colConfig.columnName];
-      } else if (colConfig.source === 'calculated' && colConfig.formula) {
-        try {
-          return colConfig.formula(rowObj);
-        } catch (error) {
-          console.error(`Error calculating column "${colConfig.header}":`, error);
-          return null;
-        }
-      }
-      return null;
-    });
-  });
+/**
+ * Utility function to create an object from two arrays: keys and values.
+ */
+const createObjectFromArrays = (
+    keys: string[],
+    values: (string | number | boolean | null)[]
+): { [key: string]: string | number | boolean | null } => {
+    const obj: { [key: string]: string | number | boolean | null } = {};
+    for (let i = 0; i < keys.length; i++) {
+        obj[keys[i]] = values[i];
+    }
+    return obj;
 };
 
 /**
  * Loads data from a worksheet given the sheet name and selected columns.
  */
 const loadTableData = (
-  workbook: ExcelScript.Workbook,
-  sheetName: string,
-  selectColumns: string[]
-): { headers: string[], rows: any[][] } => {
-  const sheet = workbook.getWorksheet(sheetName);
-  const values = sheet.getUsedRange().getValues() as any[][];
-  const allHeaders = values[0] as string[];
+    workbook: ExcelScript.Workbook,
+    sheetName: string,
+    selectColumns: string[]
+): { headers: string[], rows: (string | number | boolean | null)[][] } => {
+    const sheet = workbook.getWorksheet(sheetName);
+    const values = sheet.getUsedRange().getValues() as (string | number | boolean | null)[][];
+    const allHeaders = values[0] as string[];
 
-  // Map selected columns to their indices
-  const columnIndices = selectColumns.map(colName => {
-    const index = allHeaders.indexOf(colName);
-    if (index === -1) throw new Error(`Column "${colName}" not found in sheet "${sheetName}"`);
-    return index;
-  });
+    // Map selected columns to their indices
+    const columnIndices = selectColumns.map(colName => {
+        const index = allHeaders.indexOf(colName);
+        if (index === -1) throw new Error(`Column "${colName}" not found in sheet "${sheetName}"`);
+        return index;
+    });
 
-  // Extract headers and rows for selected columns
-  const headers = selectColumns;
-  const rows = values.slice(1).map(row => columnIndices.map(i => row[i]));
+    // Extract headers and rows for selected columns
+    const headers = selectColumns;
+    const rows = values.slice(1).map(row => columnIndices.map(i => row[i]));
 
-  return { headers, rows };
+    return { headers, rows };
 };
 
 /**
  * Formats the output columns based on their declared types.
  */
 const formatOutputColumns = (
-  dataRange: ExcelScript.Range,
-  outputColumns: OutputColumnConfig[]
+    dataRange: ExcelScript.Range,
+    outputColumns: OutputColumnConfig[]
 ): void => {
-  outputColumns.forEach((colConfig, index) => {
-    const columnRange = dataRange.getColumn(index);
-    const formatMap: Record<string, string> = {
-      'NUMBER': "0",
-      'CURRENCY': "$#,##0.00",
-      'DATE': "mm/dd/yyyy",
-    };
-    const format = formatMap[colConfig.type];
-    if (format) {
-      columnRange.setNumberFormat(format);
-    }
-  });
+    outputColumns.forEach((colConfig, index) => {
+        const columnRange = dataRange.getColumn(index);
+        const formatMap: { [key: string]: string } = {
+            'NUMBER': "0",
+            'CURRENCY': "$#,##0.00",
+            'DATE': "mm/dd/yyyy",
+        };
+        const format = formatMap[colConfig.type];
+        if (format) {
+            columnRange.setNumberFormat(format);
+        }
+    });
 };
 
 /**
  * Adds slicers for specified columns and positions them horizontally to the right of the table.
  */
 const addAndPositionSlicers = (
-  workbook: ExcelScript.Workbook,
-  table: ExcelScript.Table,
-  slicersConfig: SlicerConfig[]
+    workbook: ExcelScript.Workbook,
+    table: ExcelScript.Table,
+    slicersConfig: SlicerConfig[]
 ): void => {
-  // Get the table range position and size
-  const tableRange = table.getRange();
-  const tableLeft = tableRange.getLeft();
-  const tableTop = tableRange.getTop();
-  const tableWidth = tableRange.getWidth();
+    // Get the table range position and size
+    const tableRange = table.getRange();
+    const tableLeft = tableRange.getLeft();
+    const tableTop = tableRange.getTop();
+    const tableWidth = tableRange.getWidth();
 
-  // Define standard slicer dimensions (in points)
-  const slicerWidth = 100;
-  const slicerHeight = 150;
-  const slicerGap = 10;
+    // Define standard slicer dimensions (in points)
+    const slicerWidth = 100;
+    const slicerHeight = 150;
+    const slicerGap = 10;
 
-  // Initial position for the first slicer
-  let currentSlicerLeft = tableLeft + tableWidth + 20;
-  let currentSlicerTop = tableTop;
+    // Initial position for the first slicer
+    let currentSlicerLeft = tableLeft + tableWidth + 20;
+    let currentSlicerTop = tableTop;
 
-  slicersConfig.forEach(slicerConfig => {
-    // Add slicer for the specified column
-    const slicer = workbook.addSlicer(table, slicerConfig.columnName, table.getWorksheet());
+    slicersConfig.forEach(slicerConfig => {
+        // Add slicer for the specified column
+        const slicer = workbook.addSlicer(table, slicerConfig.columnName, table.getWorksheet());
 
-    // Get slicer shape and set size
-    const slicerShape = slicer.getShape();
-    slicerShape.setWidth(slicerWidth);
-    slicerShape.setHeight(slicerHeight);
+        // Set slicer size
+        slicer.setWidth(slicerWidth);
+        slicer.setHeight(slicerHeight);
 
-    // Position the slicer
-    slicerShape.setLeft(currentSlicerLeft);
-    slicerShape.setTop(currentSlicerTop);
+        // Position the slicer
+        slicer.setLeft(currentSlicerLeft);
+        slicer.setTop(currentSlicerTop);
 
-    // Update positions for next slicer
-    currentSlicerLeft += slicerWidth + slicerGap;
-  });
+        // Update positions for next slicer
+        currentSlicerLeft += slicerWidth + slicerGap;
+    });
 };
 
 /**
  * Configuration interfaces.
  */
 interface VisualizationConfig {
-  outputSheetName: string;
-  factTable: FactTableConfig;
-  dimensionTables: DimensionTableConfig[];
-  outputColumns: OutputColumnConfig[];
-  slicers?: SlicerConfig[];
+    outputSheetName: string;
+    factTable: FactTableConfig;
+    dimensionTables: DimensionTableConfig[];
+    outputColumns: OutputColumnConfig[];
+    slicers?: SlicerConfig[];
 }
 
 interface FactTableConfig {
-  sheetName: string;
-  keyColumns: string[];
+    sheetName: string;
+    keyColumns: string[];
 }
 
 interface DimensionTableConfig {
-  sheetName: string;
-  joinColumnFact: string;
-  joinColumnDim: string;
-  selectColumns: string[];
+    sheetName: string;
+    joinColumnFact: string;
+    joinColumnDim: string;
+    selectColumns: string[];
 }
 
 interface OutputColumnConfig {
-  header: string;
-  source: 'fact' | 'dimension' | 'calculated';
-  sheetName?: string;
-  columnName?: string;
-  formula?: (row: Record<string, any>) => any;
-  type: string;
+    header: string;
+    source: 'fact' | 'dimension' | 'calculated';
+    sheetName?: string;
+    columnName?: string;
+    formula?: (row: { [key: string]: string | number | boolean | null }) => string | number | boolean | null;
+    type: string;
 }
 
 interface SlicerConfig {
-  columnName: string;
+    columnName: string;
+}
+
+interface DimensionDataMaps {
+    [sheetName: string]: {
+        dataMap: { [key: string]: (string | number | boolean | null)[] };
+        headers: string[];
+    };
 }
